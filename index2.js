@@ -23,7 +23,7 @@ async function sendMessage() {
   chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 
   try {
-    const response = await fetch("/chat", {
+    const response = await fetch("https://web-production-0af22.up.railway.app/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: msg }),
@@ -64,4 +64,5 @@ document.getElementById("user-input").addEventListener("keypress", (e) => {
 // Optional: handle Send button click if exists
 const sendBtn = document.getElementById("send-btn");
 if (sendBtn) sendBtn.addEventListener("click", sendMessage);
+
 

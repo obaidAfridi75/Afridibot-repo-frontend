@@ -76,7 +76,7 @@ body {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: url("/static/bot.png/chatbot.png") center/cover no-repeat;
+  background: url("chatbot.png") center/cover no-repeat;
   border: 2px solid #fff;
 }
 
@@ -254,3 +254,4 @@ body {
   .chat-header h3 { font-size: 0.8rem; }
   .bot-avatar { width: 24px; height: 24px; }
 }
+

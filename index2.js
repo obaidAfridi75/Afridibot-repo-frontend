@@ -118,11 +118,11 @@ if (msg.toLowerCase().includes("what we discussed") ||
   chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 
  try {
-    const response = await fetch("/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: msg }),
-    });
+    const response = await fetch("https://web-production-0af22.up.railway.app/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: msg }),
+});
 
     const data = await response.json();
     chatBox.removeChild(typing);
@@ -134,13 +134,13 @@ if (msg.toLowerCase().includes("what we discussed") ||
     if (window.marked && data.reply) {
       botMsg.innerHTML = marked.parse(data.reply);
     } else {
-      botMsg.textContent = data.reply || "⚠️ No response received.";
+      botMsg.textContent = data.reply || "Service temporarily unavailable. Please try again shortly.";
     }
 
     chatBox.appendChild(botMsg);
 
     // Save bot response to memory
-    saveMessage("bot", data.reply || "⚠️ No response received.");
+    saveMessage("bot", data.reply || "Service temporarily unavailable. Please try again shortly.");
 
     // Auto-scroll again
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });

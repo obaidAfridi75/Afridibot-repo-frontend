@@ -1,227 +1,165 @@
-from flask import Flask, request, jsonify, render_template
-import google.genai as genai
-from flask_cors import CORS
-from dotenv import load_dotenv
-import requests
-import os
+// Chat Memory
+let chatHistory = [];
 
-# Load environment variables
-load_dotenv()
-
-app = Flask(__name__)
-CORS(app)  # Enable CORS
-
-# Secret key for session (still needed if you use session for other things)
-app.secret_key = os.urandom(24)
-
-# Gemini client
-GOOGLE_GENAI_API_KEY = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=GOOGLE_GENAI_API_KEY)
-
-# Cache settings (optional)
-CACHE_DURATION = 30  # seconds
-api_cache = {}
-
-# --- Home route ---
-@app.route('/')
-def home():
-    return render_template("index.html")
-
-# --- Chat route ---
-@app.route('/chat', methods=['POST'])
-def chat():
-    try:
-        data = request.get_json()
-        user_message = data.get("message", "").strip()
-
-        #  MOVE THE DETECTION CODE RIGHT HERE
-        price_keywords = ["gold price", "gold rate", "rate of gold", "price of gold", "24k", "22k", "tola rate", "gram rate", "sona rate", "سونے", "سونا"]
-        is_price_query = any(keyword in user_message.lower() for keyword in price_keywords)
-
-        general_gold_keywords = ["gold mine", "gold mining", "where gold", "how to mine", "gold reserve", "gold production"]
-        is_general_gold = any(keyword in user_message.lower() for keyword in general_gold_keywords)
-
-        is_gold_related = is_price_query and not is_general_gold
-        #  END OF DETECTION CODE
-
-        if not user_message:
-            return jsonify({"error": "No message provided"}), 400
-
-    
-        # Fetch USD → PKR rate from CoinGecko
-        try:
-            cg_response = requests.get(
-                "https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=pkr",
-                timeout=5
-            )
-            cg_data = cg_response.json()
-            usd_to_pkr = cg_data.get("tether", {}).get("pkr", 280)
-        except Exception as e:
-            usd_to_pkr = 280
-            print(f"🔧 CoinGecko fallback used: {usd_to_pkr}")
-
-    
-        # Metals API call - CORRECTED VERSION
-        
-        gold_price_usd = None
-        if is_gold_related:
-            try:
-                params = {
-                    'api_key': os.getenv('METAL_API_KEY'),
-                    'base': 'XAU',  # Gold as base currency
-                    'currencies': 'USD'
-                }
-                metal_response = requests.get(os.getenv('METAL_API_URL'), params=params, timeout=5)
-                metal_response.raise_for_status()
-                metal_data = metal_response.json()
-                
-                if metal_data.get('success'):
-                    # For XAU base, USD rate represents gold price per ounce
-                    gold_price_usd = metal_data.get("rates", {}).get("USD")
-                    print(f" Gold price fetched: ${gold_price_usd} per ounce")
-                else:
-                    print(f"❌ Metal API error: {metal_data.get('error')}")
-                    
-            except requests.RequestException as e:
-                print(f"🔧 Metals API request failed: {str(e)}")
-
-        
-        # Build gold reply
-        
-        if is_gold_related and gold_price_usd:
-            # Convert gold price from per ounce to per gram
-            # 1 ounce = 31.1035 grams
-            gold_price_per_gram_usd = gold_price_usd / 31.1035
-            price_pkr = gold_price_per_gram_usd * usd_to_pkr
-
-            # Smart city detection
-            city_name = "Pakistan"
-            city_aliases = {
-    # Punjab Cities
-    "Lahore": ["lahore", "lhr"],
-    "Karachi": ["karachi", "khi"],
-    "Islamabad": ["islamabad", "islo", "isl", "isb"],
-    "Rawalpindi": ["rawalpindi", "pindi", "rwp"],
-    "Faisalabad": ["faisalabad", "faisal", "fsd"],
-    "Multan": ["multan"],
-    "Gujranwala": ["gujranwala", "gujran", "gwl"],
-    "Sialkot": ["sialkot", "skt"],
-    "Bahawalpur": ["bahawalpur", "bwp"],
-    "Sargodha": ["sargodha", "sgd"],
-    "Jhang": ["jhang"],
-    "Kasur": ["kasur"],
-    "Sheikhupura": ["sheikhupura", "sheikhu"],
-    "Rahim Yar Khan": ["rahim yar khan", "rahimyar khan", "ryk"],
-    "Dera Ghazi Khan": ["dera ghazi khan", "dg khan", "dgk"],
-    "Sahiwal": ["sahiwal", "swl"],
-    
-    # KPK Cities
-    "Peshawar": ["peshawar", "pesh"],
-    "Abbottabad": ["abbottabad", "abbott", "abd"],
-    "Mardan": ["mardan"],
-    "Mingora": ["mingora", "swat"],
-    "Kohat": ["kohat"],
-    "Bannu": ["bannu"],
-    "Dera Ismail Khan": ["dera ismail khan", "d i khan", "dik"],
-    "Charsadda": ["charsadda"],
-    "Nowshera": ["nowshera"],
-    "Mansehra": ["mansehra"],
-    "Swabi": ["swabi"],
-    "Chitral": ["chitral"],
-    
-    # Sindh Cities (excluding Karachi)
-    "Hyderabad": ["hyderabad", "hyd"],
-    "Sukkur": ["sukkur", "skr"],
-    "Larkana": ["larkana"],
-    "Nawabshah": ["nawabshah", "shaheed benazirabad"],
-    "Mirpur Khas": ["mirpur khas", "mirpurkhas"],
-    "Jacobabad": ["jacobabad"],
-    "Shikarpur": ["shikarpur"],
-    "Dadu": ["dadu"],
-    "Tando Adam": ["tando adam"],
-    "Khairpur": ["khairpur"],
-    
-    # Balochistan Cities
-    "Quetta": ["quetta"],
-    "Turbat": ["turbat"],
-    "Khuzdar": ["khuzdar"],
-    "Hub": ["hub", "hub chowki"],
-    "Chaman": ["chaman"],
-    "Gwadar": ["gwadar"],
-    "Dera Murad Jamali": ["dera murad jamali", "dm jamali"],
-    "Zhob": ["zhob"],
-    "Sibi": ["sibi"],
-    
-    # AJK & Gilgit-Baltistan
-    "Muzaffarabad": ["muzaffarabad", "muzaffarabad ajk"],
-    "Mirpur": ["mirpur", "mirpur ajk"],
-    "Rawalakot": ["rawalakot"],
-    "Gilgit": ["gilgit"],
-    "Skardu": ["skardu"],
-    "Hunza": ["hunza"],
-    
-    # Provinces
-    "Punjab": ["punjab"],
-    "Sindh": ["sindh"],
-    "KPK": ["kpk", "khyber pakhtunkhwa", "khyber", "pakhtunkhwa"],
-    "Balochistan": ["balochistan", "baloch"],
-    "AJK": ["ajk", "azad kashmir", "kashmir"],
-    "Gilgit-Baltistan": ["gilgit baltistan", "gilgit", "baltistan"],
-    
-    # Major Towns
-    "Jhelum": ["jhelum"],
-    "Kamoke": ["kamoke"],
-    "Hafizabad": ["hafizabad"],
-    "Gujrat": ["gujrat"],
-    "Wazirabad": ["wazirabad"],
-    "Jaranwala": ["jaranwala"],
-    "Chiniot": ["chiniot"],
-    "Okara": ["okara"],
-    "Pakpattan": ["pakpattan"],
-    "Bahawalnagar": ["bahawalnagar"]
+function saveMessage(role, content) {
+    chatHistory.push({ role, content });
 }
 
-            user_text = user_message.lower()
-            for city, aliases in city_aliases.items():
-                if any(alias in user_text for alias in aliases):
-                    city_name = city
-                    break
+// Clear chat on page load (keep default message)
+window.addEventListener("load", () => {
+    const chatBox = document.getElementById("chat-box");
+    if (chatBox) {
+        const messages = chatBox.querySelectorAll('.message');
+        // Keep only first message (default), remove others
+        for (let i = messages.length - 1; i >= 1; i--) {
+            messages[i].remove();
+        }
+    }
+    chatHistory = []; // Reset memory
+});
 
-            reply_text = (
-                f" Today's Gold Rates in {city_name} (approx):\n\n"
-                f" 24K: {price_pkr:.2f} PKR per gram\n"
-                f" 22K: {(price_pkr*0.9167):.2f} PKR per gram\n"
-                f" 21K: {(price_pkr*0.875):.2f} PKR per gram\n\n"
-                f" Gold Price: ${gold_price_usd:,.2f} per ounce\n"
-                f" Note: Rates may slightly vary across cities and jewelers."
-            )
-            return jsonify({"reply": reply_text})
+async function sendMessage() {
+  const input = document.getElementById("user-input");
+  const msg = input.value.trim();
+  if (!msg) return;
 
-        elif is_gold_related:
-            reply_text = (
-                "Live gold data is currently unavailable. Please try again soon."
-                "\nI'm here to help only with gold-related topics. "
-                "Please ask something about gold."
-            )
-            return jsonify({"reply": reply_text})
+  const chatBox = document.getElementById("chat-box");
+    input.value = "";
 
-      
-        # Non-gold queries: Gemini AI fallback
-       
-        prompt = f"User asked: {user_message}\n\nAnswer clearly and naturally."
+ // Check for recap before sending to backend
+if (msg.toLowerCase().includes("what we discussed") || 
+    msg.toLowerCase().includes("recap") ||
+    msg.toLowerCase().includes("summary") ||
+    msg.toLowerCase().includes("history") ||
+    msg.toLowerCase().includes("previous chat") ||
+    msg.toLowerCase().includes("conversation so far") ||
+    msg.toLowerCase().includes("what did we talk") ||
+    msg.toLowerCase().includes("show me our chat") ||
+    msg.toLowerCase().includes("remember what we") ||
+    msg.toLowerCase().includes("our discussion")) {
+    
+    const recapMsg = document.createElement("div");
+    recapMsg.className = "message bot";
+    
+    if (chatHistory.length === 0) {
+        recapMsg.textContent = "We haven't discussed anything yet! Ask me about gold prices. ";
+    } else {
+        let summary = "**Here's a summary of our conversation:**\n\n";
+        
+        // Filter out recap messages to avoid loops
+        const filteredHistory = chatHistory.filter(m => 
+            !m.content.toLowerCase().includes("what we discussed") &&
+            !m.content.toLowerCase().includes("recap") &&
+            !m.content.toLowerCase().includes("summary") &&
+            !m.content.toLowerCase().includes("history") &&
+            !m.content.toLowerCase().includes("previous chat") &&
+            !m.content.toLowerCase().includes("conversation so far") &&
+            !m.content.toLowerCase().includes("what did we talk") &&
+            !m.content.toLowerCase().includes("show me our chat") &&
+            !m.content.toLowerCase().includes("remember what we") &&
+            !m.content.toLowerCase().includes("our discussion")
+        );
+        
+        const userMessages = filteredHistory.filter(m => m.role === "user");
+        const botMessages = filteredHistory.filter(m => m.role === "bot");
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
-        final_reply = getattr(response, "text", "I couldn't process your request. Please try again.")
+        // Numbered list format
+        for (let i = 0; i < userMessages.length; i++) {
+            const userMsg = userMessages[i]?.content || "";
+            const botMsg = botMessages[i]?.content || "";
+            
+            // Clean the bot response for summary
+            const cleanBotMsg = botMsg
+                .replace(/\*\*/g, "")
+                .replace(/\*/g, "")
+                .replace(/Today's Gold Rates in .*?\(approx\):/gi, "Current gold rates:")
+                .replace(/ Note:.*/gi, "")
+                .replace(/\n/g, " ")
+                .substring(0, 120) + (botMsg.length > 120 ? "..." : "");
 
-        return jsonify({"reply": final_reply})
+            summary += `**${i + 1}. You asked:** "${userMsg}"\n`;
+            summary += `   **I replied:** ${cleanBotMsg}\n\n`;
+        }
 
-    except Exception as e:
-        print(f"🔧 General error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        summary += `**Total topics discussed:** ${userMessages.length}`;
 
+        // Render with markdown formatting
+        if (window.marked) {
+            recapMsg.innerHTML = marked.parse(summary);
+        } else {
+            recapMsg.textContent = summary;
+        }
+    }
+    
+    chatBox.appendChild(recapMsg);
+    saveMessage("bot", recapMsg.textContent);
+    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
+    return; // Stop here - don't send to backend
+}
+  // User message
+  const userMsg = document.createElement("div");
+  userMsg.className = "message user";
+  userMsg.textContent = msg;
+  chatBox.appendChild(userMsg);
 
-if __name__ == "__main__":
-    app.run(debug=True)
+  // Save user message to memory
+  saveMessage("user", msg);
+
+  input.value = "";
+
+  // Auto-scroll to bottom
+  chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
+
+  // Typing indicator
+  const typing = document.createElement("div");
+  typing.className = "message bot typing";
+  typing.textContent = "GoldBot is Thinking...";
+  chatBox.appendChild(typing);
+  chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
+
+  try {
+    const response = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg }),
+    });
+
+    const data = await response.json();
+    chatBox.removeChild(typing);
+
+    const botMsg = document.createElement("div");
+    botMsg.className = "message bot";
+
+    //  Render Markdown if available
+    if (window.marked && data.reply) {
+      botMsg.innerHTML = marked.parse(data.reply);
+    } else {
+      botMsg.textContent = data.reply || "⚠️ No response received.";
+    }
+
+    chatBox.appendChild(botMsg);
+
+    // Save bot response to memory
+    saveMessage("bot", data.reply || "⚠️ No response received.");
+
+    // Auto-scroll again
+    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
+
+  } catch (err) {
+    chatBox.removeChild(typing);
+    const errMsg = document.createElement("div");
+    errMsg.className = "message bot";
+    errMsg.textContent = "⚠️ Connection error. Please try again.";
+    chatBox.appendChild(errMsg);
+    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
+  }
+}
+
+// Handle Enter key press
+document.getElementById("user-input").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
+
+// Optional: handle Send button click if exists
+const sendBtn = document.getElementById("send-btn");
+if (sendBtn) sendBtn.addEventListener("click", sendMessage);

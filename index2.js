@@ -117,12 +117,12 @@ if (msg.toLowerCase().includes("what we discussed") ||
   chatBox.appendChild(typing);
   chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 
-  try {
-    const response = await fetch("/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: msg }),
-    });
+ fetch("https://<your-railway-domain>.up.railway.app/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: msg }),
+});
+
 
     const data = await response.json();
     chatBox.removeChild(typing);
@@ -134,13 +134,13 @@ if (msg.toLowerCase().includes("what we discussed") ||
     if (window.marked && data.reply) {
       botMsg.innerHTML = marked.parse(data.reply);
     } else {
-      botMsg.textContent = data.reply || "⚠️ No response received.";
+      botMsg.textContent = data.reply || "I'm sorry, I wasn’t able to process your request. Please try again or ask something else";
     }
 
     chatBox.appendChild(botMsg);
 
     // Save bot response to memory
-    saveMessage("bot", data.reply || "⚠️ No response received.");
+    saveMessage("bot", data.reply || "I'm sorry, I wasn’t able to process your request. Please try again or ask something else");
 
     // Auto-scroll again
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
@@ -163,3 +163,4 @@ document.getElementById("user-input").addEventListener("keypress", (e) => {
 // Optional: handle Send button click if exists
 const sendBtn = document.getElementById("send-btn");
 if (sendBtn) sendBtn.addEventListener("click", sendMessage);
+

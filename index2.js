@@ -117,11 +117,20 @@ if (msg.toLowerCase().includes("what we discussed") ||
   chatBox.appendChild(typing);
   chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 
- fetch("https://<your-railway-domain>.up.railway.app/chat", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ message: msg }),
-});
+try {
+  const response = await fetch("https://web-production-0af22.up.railway.app/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: msg }),
+  });
+
+  const data = await response.json();
+  console.log(data);
+
+} catch (error) {
+  console.error("Fetch Error:", error);
+}
+
 
 
     const data = await response.json();
@@ -163,4 +172,5 @@ document.getElementById("user-input").addEventListener("keypress", (e) => {
 // Optional: handle Send button click if exists
 const sendBtn = document.getElementById("send-btn");
 if (sendBtn) sendBtn.addEventListener("click", sendMessage);
+
 

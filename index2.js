@@ -124,21 +124,18 @@ try {
         body: JSON.stringify({ message: msg }),
     });
 
-    const data = await response.json();
-    chatBox.removeChild(typing);
-
-    const botMsg = document.createElement("div");
-    botMsg.className = "message bot";
-
-    if (window.marked && data.reply) {
-        botMsg.innerHTML = marked.parse(data.reply);
-    } else {
-        botMsg.textContent = data.reply || "I'm sorry, I wasn’t able to process your request. Please try again.";
+    if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
-    chatBox.appendChild(botMsg);
+    const data = await response.json();
 
-    saveMessage("bot", data.reply || "I'm sorry, I wasn’t able to process your request.");
+    chatBox.removeChild(typing);
+    const botMsg = document.createElement("div");
+    botMsg.className = "message bot";
+    botMsg.textContent = data.reply || "I'm sorry, I couldn’t process your request.";
+    chatBox.appendChild(botMsg);
+    saveMessage("bot", data.reply || "I'm sorry, I couldn’t process your request.");
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 
 } catch (err) {
@@ -150,7 +147,6 @@ try {
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 }
 }
-
 // Handle Enter key press
 document.getElementById("user-input").addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();

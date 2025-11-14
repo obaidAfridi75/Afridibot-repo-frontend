@@ -149,7 +149,7 @@ try {
     chatBox.appendChild(errMsg);
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 }
-
+}
 
 // Handle Enter key press
 document.getElementById("user-input").addEventListener("keypress", (e) => {
@@ -159,6 +159,7 @@ document.getElementById("user-input").addEventListener("keypress", (e) => {
 // Optional: handle Send button click if exists
 const sendBtn = document.getElementById("send-btn");
 if (sendBtn) sendBtn.addEventListener("click", sendMessage);
+
 
 
 

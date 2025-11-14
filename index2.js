@@ -117,35 +117,42 @@ if (msg.toLowerCase().includes("what we discussed") ||
   chatBox.appendChild(typing);
   chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 
-try {
-    const response = await fetch("https://web-production-0af22.up.railway.app/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg }),
+ try {
+    const response = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg }),
     });
 
-    if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
     const data = await response.json();
-
     chatBox.removeChild(typing);
+
     const botMsg = document.createElement("div");
     botMsg.className = "message bot";
-    botMsg.textContent = data.reply || "I'm sorry, I couldn’t process your request.";
+
+    //  Render Markdown if available
+    if (window.marked && data.reply) {
+      botMsg.innerHTML = marked.parse(data.reply);
+    } else {
+      botMsg.textContent = data.reply || "⚠️ No response received.";
+    }
+
     chatBox.appendChild(botMsg);
-    saveMessage("bot", data.reply || "I'm sorry, I couldn’t process your request.");
+
+    // Save bot response to memory
+    saveMessage("bot", data.reply || "⚠️ No response received.");
+
+    // Auto-scroll again
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 
-} catch (err) {
+  } catch (err) {
     chatBox.removeChild(typing);
     const errMsg = document.createElement("div");
     errMsg.className = "message bot";
     errMsg.textContent = "⚠️ Connection error. Please try again.";
     chatBox.appendChild(errMsg);
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
-}
+  }
 }
 // Handle Enter key press
 document.getElementById("user-input").addEventListener("keypress", (e) => {

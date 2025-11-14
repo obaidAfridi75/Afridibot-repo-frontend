@@ -118,20 +118,11 @@ if (msg.toLowerCase().includes("what we discussed") ||
   chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 
 try {
-  const response = await fetch("https://web-production-0af22.up.railway.app/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: msg }),
-  });
-
-  const data = await response.json();
-  console.log(data);
-
-} catch (error) {
-  console.error("Fetch Error:", error);
-}
-
-
+    const response = await fetch("https://web-production-0af22.up.railway.app/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg }),
+    });
 
     const data = await response.json();
     chatBox.removeChild(typing);
@@ -139,30 +130,26 @@ try {
     const botMsg = document.createElement("div");
     botMsg.className = "message bot";
 
-    //  Render Markdown if available
     if (window.marked && data.reply) {
-      botMsg.innerHTML = marked.parse(data.reply);
+        botMsg.innerHTML = marked.parse(data.reply);
     } else {
-      botMsg.textContent = data.reply || "I'm sorry, I wasn’t able to process your request. Please try again or ask something else";
+        botMsg.textContent = data.reply || "I'm sorry, I wasn’t able to process your request. Please try again.";
     }
 
     chatBox.appendChild(botMsg);
 
-    // Save bot response to memory
-    saveMessage("bot", data.reply || "I'm sorry, I wasn’t able to process your request. Please try again or ask something else");
-
-    // Auto-scroll again
+    saveMessage("bot", data.reply || "I'm sorry, I wasn’t able to process your request.");
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
 
-  } catch (err) {
+} catch (err) {
     chatBox.removeChild(typing);
     const errMsg = document.createElement("div");
     errMsg.className = "message bot";
     errMsg.textContent = "⚠️ Connection error. Please try again.";
     chatBox.appendChild(errMsg);
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
-  }
 }
+
 
 // Handle Enter key press
 document.getElementById("user-input").addEventListener("keypress", (e) => {
@@ -172,5 +159,6 @@ document.getElementById("user-input").addEventListener("keypress", (e) => {
 // Optional: handle Send button click if exists
 const sendBtn = document.getElementById("send-btn");
 if (sendBtn) sendBtn.addEventListener("click", sendMessage);
+
 
 
